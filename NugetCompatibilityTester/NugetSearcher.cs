@@ -18,7 +18,7 @@ namespace NugetCompatibilityTester
 
 		public async Task Search(string packageId, string version)
 		{
-			string url = "https://azuresearch-usnc.nuget.org/query?q=PackageId:Newtonsoft.Json&semVerLevel=2.0.0";
+			string url = $"https://azuresearch-usnc.nuget.org/query?q=PackageId:{packageId}&semVerLevel=2.0.0";
 			var request = new HttpRequestMessage(HttpMethod.Get, url);
 
 			var client = _factory.CreateClient();
