@@ -18,62 +18,69 @@ namespace NugetCompatibilityTester
 
 		public async Task Search(string packageId, string version)
 		{
+			var searchResponse = await GetFromSearchApiAsync(packageId);
+			var versionInUse = GetVersionInformation(searchResponse).First(v => v.Version == version);
+
+			var registrationLeaf = await GetRegistrationLeafAsync(versionInUse.DetailUrl);
+			string catalogUrl = GetCatalogUrl(registrationLeaf);
+
+			var catalogLeaf = await GetCatalogLeafAsync(catalogUrl);
+
+			var targetFrameworks = GetTargetFrameworks(catalogLeaf);
+			Console.WriteLine($"Package {packageId}, {version}: Supported frameworks: {string.Join(", ", targetFrameworks)}");
+		}
+
+		private async Task<JObject> GetFromSearchApiAsync(string packageId)
+		{
 			string url = $"https://azuresearch-usnc.nuget.org/query?q=PackageId:{packageId}&semVerLevel=2.0.0";
 			var request = new HttpRequestMessage(HttpMethod.Get, url);
-
-			var client = _factory.CreateClient();
+			using var client = _factory.CreateClient();
 			var response = await client.SendAsync(request);
 			var content = await response.Content.ReadAsStringAsync();
 
-			var foo = JObject.Parse(content);
+			return JObject.Parse(content);
+		}
 
-			var versionInformation = foo["data"]![0]!["versions"]!.ToList();
+		private IEnumerable<NugetVersion> GetVersionInformation(JObject searchResponse)
+		{
+			var versionInformation = searchResponse["data"]![0]!["versions"]!.ToList();
 
-			var nugetVersions = versionInformation.Select(v => new NugetVersion
+			return versionInformation.Select(v => new NugetVersion
 			{
 				Version = v["version"]!.ToString(),
 				DetailUrl = v["@id"]!.ToString()
-			}).ToList();
-
-			var versionInUse = nugetVersions.First(v => v.Version == version);
-
-			await ProcessVersionInUse(versionInUse);
-
-			Console.WriteLine("Done");
+			});
 		}
 
-		private async Task ProcessVersionInUse(NugetVersion versionInUse)
+		private async Task<JObject> GetRegistrationLeafAsync(string leafUrl)
 		{
-			var client = _factory.CreateClient("decompress_gzip");
-			var request = new HttpRequestMessage(HttpMethod.Get, versionInUse.DetailUrl);
+			using var client = _factory.CreateClient("decompress_gzip");
+			var request = new HttpRequestMessage(HttpMethod.Get, leafUrl);
 			var response = await client.SendAsync(request);
 
 			var content = await response.Content.ReadAsStringAsync();
 
-			var bar = JObject.Parse(content);
-
-			string catalogUrl = bar["catalogEntry"]!.ToString();
-
-			await ProcessCatalog(catalogUrl);
-
-			Console.WriteLine("Done 2");
+			return JObject.Parse(content);
 		}
 
-		private async Task ProcessCatalog(string catalogUrl)
+		private static string GetCatalogUrl(JObject registrationLeaf)
+			=> registrationLeaf["catalogEntry"]!.ToString();
+
+		private async Task<JObject> GetCatalogLeafAsync(string catalogUrl)
 		{
-			var client = _factory.CreateClient("decompress_gzip");
+			using var client = _factory.CreateClient("decompress_gzip");
 			var request = new HttpRequestMessage(HttpMethod.Get, catalogUrl);
 			var response = await client.SendAsync(request);
 
 			var content = await response.Content.ReadAsStringAsync();
 
-			var zoo = JObject.Parse(content);
+			return JObject.Parse(content);
+		}
 
-			var dependencies = zoo["dependencyGroups"]?.ToList() ?? new List<JToken>();
-
-			//Todo: Extract .NET frameworks info from dependencies.
-
-			Console.WriteLine("Done 3");
+		private List<string> GetTargetFrameworks(JObject catalogLeaf)
+		{
+			var dependencyGroups = catalogLeaf["dependencyGroups"]?.ToList() ?? new List<JToken>();
+			return dependencyGroups.Select(d => d["targetFramework"]!.ToString()).ToList();
 		}
 	}
 
