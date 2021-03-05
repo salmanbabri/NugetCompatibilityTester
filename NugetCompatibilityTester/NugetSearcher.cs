@@ -80,7 +80,10 @@ namespace NugetCompatibilityTester
 		private List<string> GetTargetFrameworks(JObject catalogLeaf)
 		{
 			var dependencyGroups = catalogLeaf["dependencyGroups"]?.ToList() ?? new List<JToken>();
-			return dependencyGroups.Select(d => d["targetFramework"]!.ToString()).ToList();
+			return dependencyGroups
+			       .Where(d => d["targetFramework"] is not null)
+			       .Select(d => d["targetFramework"]!.ToString())
+			       .ToList();
 		}
 	}
 
