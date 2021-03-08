@@ -12,13 +12,15 @@ using NuGet.Versioning;
 
 namespace NugetCompatibilityTester
 {
-	public class NugetSdkSearch
+	public class NugetSdkCompatibility
 	{
-		public async Task Search(string packageId, string version)
+		public async Task CheckCompatibility(IEnumerable<PackageInfo> packages)
 		{
-			bool hasDotNetStandardSupport = await IsCompatible(packageId, NuGetVersion.Parse(version));
-
-			Console.WriteLine($"package: {packageId}, version: {version}, compatibility: {hasDotNetStandardSupport}");
+			foreach (var package in packages)
+			{
+				bool hasDotNetStandardSupport = await IsCompatible(package.Id, package.Version);
+				Console.WriteLine($"package: {package.Id}, version: {package.Version}, compatibility: {hasDotNetStandardSupport}");
+			}
 		}
 
 		private async Task<bool> IsCompatible(string packageId, NuGetVersion version)
