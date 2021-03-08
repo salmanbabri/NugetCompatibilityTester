@@ -14,7 +14,7 @@ namespace NugetCompatibilityTester
 {
 	public class NugetSdkCompatibility
 	{
-		public async Task CheckCompatibility(IEnumerable<PackageInfo> packages)
+		public async Task CheckCompatibility(params PackageInfo[] packages)
 		{
 			foreach (var package in packages)
 			{

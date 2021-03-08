@@ -1,14 +1,17 @@
-﻿using System.Net;
+﻿using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using NuGet.Versioning;
 
 namespace NugetCompatibilityTester
 {
 	class Program
 	{
-		static async Task Main(string[] args)
+		static async Task Main()
 		{
 			var host = GetHostBuilder().Build();
 
@@ -17,17 +20,17 @@ namespace NugetCompatibilityTester
 
 			var sdkService = services.GetRequiredService<NugetSdkCompatibility>();
 
-			await sdkService.CheckCompatibility(
-				new[]
-				{
-					new PackageInfo("Newtonsoft.Json", "12.0.3"),
-					new PackageInfo("Humanizer.Core", "2.8.26"),
-					new PackageInfo("Humanizer.Core.uk", "2.8.26"),
-					new PackageInfo("Humanizer", "2.8.26"),
-					new PackageInfo("Humanizer", "0.1.0"),
-					new PackageInfo("Newtonsoft.Json", "9.0.1")
-				}
-			);
+			var xml = XDocument.Load("demo.config");
+
+			var packages = xml.Descendants("package")
+			                  .Select(c => new PackageInfo
+			                  {
+				                  Id = c.Attribute("id")!.Value,
+				                  Version = NuGetVersion.Parse(c.Attribute("version")!.Value)
+			                  })
+			                  .ToArray();
+
+			await sdkService.CheckCompatibility(packages);
 		}
 
 		private static IHostBuilder GetHostBuilder()
@@ -36,7 +39,7 @@ namespace NugetCompatibilityTester
 			       .ConfigureServices((_, services) =>
 			       {
 				       services.AddHttpClient();
-				       services.AddHttpClient("decompress_gzip").ConfigurePrimaryHttpMessageHandler(messageHandler =>
+				       services.AddHttpClient("decompress_gzip").ConfigurePrimaryHttpMessageHandler(_ =>
 				       {
 					       var handler = new HttpClientHandler();
 
