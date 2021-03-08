@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NuGet.Common;
-using NuGet.Packaging;
+using NuGet.Frameworks;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
@@ -15,70 +15,58 @@ namespace NugetCompatibilityTester
 	{
 		public async Task Search(string packageId, string version)
 		{
-			var repository = Repository.Factory.GetCoreV3("https://api.nuget.org/v3/index.json");
+			bool hasDotNetStandardSupport = await IsCompatible(packageId, NuGetVersion.Parse(version));
 
-			/*
-			 var resource = await repository.GetResourceAsync<PackageSearchResource>();
-			var searchFilter = new SearchFilter(includePrerelease: false);
+			Console.WriteLine(hasDotNetStandardSupport);
+		}
 
-			IEnumerable<IPackageSearchMetadata> results = await resource.SearchAsync(
-				$"PackageId:{packageId} version:{version}",
-				searchFilter,
-				skip: 0,
-				take: 1,
-				NullLogger.Instance,
-				CancellationToken.None);
+		private async Task<bool> IsCompatible(string packageId, NuGetVersion version)
+		{
+			var packagesMetadata = await GetPackageMetadata(packageId);
 
-			foreach (IPackageSearchMetadata result in results)
+			var currentPackage = packagesMetadata.FirstOrDefault(p => p.Identity.Version.Equals(version));
+
+			if (currentPackage is null)
+				throw new ArgumentException($"No information available for package: {packageId}, version: {version}");
+
+			var dependencyGroups = currentPackage.DependencySets.ToList();
+
+			if (dependencyGroups.Count is 0)
+				return false;
+
+			if (dependencyGroups.Any(d => d.TargetFramework.Framework.Equals(".NETStandard")))
+				return true;
+
+			var otherDependencies = dependencyGroups.Where(d => d.TargetFramework == NuGetFramework.AnyFramework)
+			                                        .SelectMany(d => d.Packages)
+			                                        .ToList();
+
+			foreach (var package in otherDependencies)
 			{
-				Console.WriteLine($"Found package {result.Identity.Id} {result.Identity.Version}");
+				bool isCompatible = await IsCompatible(package.Id, package.VersionRange.MinVersion);
+				if (isCompatible)
+					return true;
 			}
-			*/
 
-			/*
-			 var dependencyInfoResource = await repository.GetResourceAsync<DependencyInfoResource>();
+			return false;
+		}
 
-			var packageIdentity = new PackageIdentity("cake.nuget", NuGetVersion.Parse("0.30.0"));
-			var nuGetFramework = NuGetFramework.ParseFolder("net45");
-
-			var dependencyInfo = await dependencyInfoResource.ResolvePackage(packageIdentity,
-				nuGetFramework,
-				new NullSourceCacheContext(),
-				NullLogger.Instance,
-				CancellationToken.None);
-
-			Console.WriteLine(dependencyInfo);
-			*/
-
+		private async Task<IEnumerable<IPackageSearchMetadata>> GetPackageMetadata(string packageId)
+		{
 			ILogger logger = NullLogger.Instance;
 			var cancellationToken = CancellationToken.None;
 			var cache = new SourceCacheContext();
 
+			var repository = Repository.Factory.GetCoreV3("https://api.nuget.org/v3/index.json");
 			PackageMetadataResource resource = await repository.GetResourceAsync<PackageMetadataResource>(cancellationToken);
 
-			IEnumerable<IPackageSearchMetadata> packages = await resource.GetMetadataAsync(
+			return await resource.GetMetadataAsync(
 				packageId,
 				includePrerelease: false,
 				includeUnlisted: false,
 				cache,
 				logger,
 				cancellationToken);
-
-			var ourPackage = packages.FirstOrDefault(p => p.Identity.Version.Equals(NuGetVersion.Parse(version)));
-
-			if (ourPackage is null)
-				throw new ArgumentException($"No information available for package: {packageId}, version: {version}");
-
-			var dependencyGroups = ourPackage.DependencySets.ToList();
-
-			bool hasDotNetStandardSupport = IsCompatible(dependencyGroups);
-
-			Console.WriteLine(packages);
-		}
-
-		private bool IsCompatible(IReadOnlyCollection<PackageDependencyGroup> dependencyGroups)
-		{
-			return dependencyGroups.Any(d => d.TargetFramework.Framework.Equals(".NETStandard"));
 		}
 	}
 }

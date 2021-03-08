@@ -41,11 +41,11 @@ namespace NugetCompatibilityTester
 			return JObject.Parse(content);
 		}
 
-		private IEnumerable<NugetVersion> GetVersionInformation(JObject searchResponse)
+		private IEnumerable<VersionInfo> GetVersionInformation(JObject searchResponse)
 		{
 			var versionInformation = searchResponse["data"]![0]!["versions"]!.ToList();
 
-			return versionInformation.Select(v => new NugetVersion
+			return versionInformation.Select(v => new VersionInfo
 			{
 				Version = v["version"]!.ToString(),
 				DetailUrl = v["@id"]!.ToString()
@@ -87,7 +87,7 @@ namespace NugetCompatibilityTester
 		}
 	}
 
-	public class NugetVersion
+	public class VersionInfo
 	{
 		public string Version { get; set; } = "";
 		public string DetailUrl { get; set; } = "";

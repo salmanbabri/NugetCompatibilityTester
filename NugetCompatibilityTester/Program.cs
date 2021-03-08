@@ -22,7 +22,8 @@ namespace NugetCompatibilityTester
 			var sdkService = services.GetRequiredService<NugetSdkSearch>();
 			// await sdkService.Search("Newtonsoft.Json", "12.0.3");
 			// await sdkService.Search("Humanizer.Core", "2.8.26");
-			await sdkService.Search("Humanizer.Core.uk", "2.8.26");
+			// await sdkService.Search("Humanizer.Core.uk", "2.8.26");
+			await sdkService.Search("Humanizer", "2.8.26");
 			// await sdkService.Search("Newtonsoft.Json", "9.0.1");
 			// await myService.Search("xunit", "2.4.1");
 			// await myService.Search("Humanizer.Core", "2.8.26");
