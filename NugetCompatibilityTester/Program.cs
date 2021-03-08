@@ -15,8 +15,17 @@ namespace NugetCompatibilityTester
 			using var serviceScope = host.Services.CreateScope();
 			var services = serviceScope.ServiceProvider;
 
-			var myService = services.GetRequiredService<NugetSearcher>();
-			await myService.Search("Newtonsoft.Json", "12.0.3");
+			// var apiService = services.GetRequiredService<NugetApiSearch>();
+			// await apiService.Search("Newtonsoft.Json", "12.0.3");
+			// await apiService.Search("Newtonsoft.Json", "9.0.1");
+
+			var sdkService = services.GetRequiredService<NugetSdkSearch>();
+			// await sdkService.Search("Newtonsoft.Json", "12.0.3");
+			// await sdkService.Search("Humanizer.Core", "2.8.26");
+			await sdkService.Search("Humanizer.Core.uk", "2.8.26");
+			// await sdkService.Search("Newtonsoft.Json", "9.0.1");
+			// await myService.Search("xunit", "2.4.1");
+			// await myService.Search("Humanizer.Core", "2.8.26");
 		}
 
 		private static IHostBuilder GetHostBuilder()
@@ -34,7 +43,8 @@ namespace NugetCompatibilityTester
 
 					       return handler;
 				       });
-				       services.AddTransient<NugetSearcher>();
+				       services.AddTransient<NugetApiSearch>();
+				       services.AddTransient<NugetSdkSearch>();
 			       })
 			       .UseConsoleLifetime();
 		}

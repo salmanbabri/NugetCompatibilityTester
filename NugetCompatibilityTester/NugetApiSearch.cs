@@ -7,11 +7,11 @@ using Newtonsoft.Json.Linq;
 
 namespace NugetCompatibilityTester
 {
-	public class NugetSearcher
+	public class NugetApiSearch
 	{
 		private readonly IHttpClientFactory _factory;
 
-		public NugetSearcher(IHttpClientFactory factory)
+		public NugetApiSearch(IHttpClientFactory factory)
 		{
 			_factory = factory;
 		}
