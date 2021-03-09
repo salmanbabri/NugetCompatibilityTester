@@ -18,7 +18,13 @@ namespace NugetCompatibilityTester
 			foreach (var package in packages)
 			{
 				var allMetaData = (await GetAllPackageMetadata(package.Id)).ToList();
-				var packageMetaData = allMetaData.First(p => p.Identity.Version.Equals(package.Version));
+				var packageMetaData = allMetaData.FindClosestVersion(package.Version);
+
+				if(packageMetaData is null)
+				{
+					Console.WriteLine($"Package {package.Id} with version {package.Version} not found on public nuget repository.");
+					continue;
+				}
 
 				bool hasDotNetStandardSupport = await IsCompatible(packageMetaData);
 				Console.WriteLine($"package: {package.Id}, version: {package.Version}, compatibility: {hasDotNetStandardSupport}");
@@ -72,8 +78,10 @@ namespace NugetCompatibilityTester
 
 			foreach (var package in dependencies)
 			{
-				var metaData = (await GetAllPackageMetadata(package.Id)).First(p => p.Identity.Version.Equals(package.VersionRange.MinVersion));
-				yield return await IsCompatible(metaData);
+				var allMetaData = (await GetAllPackageMetadata(package.Id)).ToList();
+				var metaData = allMetaData.FindClosestVersion(package.VersionRange.MinVersion);
+
+				yield return metaData is not null && await IsCompatible(metaData);
 			}
 		}
 
