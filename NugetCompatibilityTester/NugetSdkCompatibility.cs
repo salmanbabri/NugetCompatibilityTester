@@ -8,7 +8,6 @@ using NuGet.Frameworks;
 using NuGet.Packaging;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
-using NuGet.Versioning;
 
 namespace NugetCompatibilityTester
 {
@@ -18,20 +17,22 @@ namespace NugetCompatibilityTester
 		{
 			foreach (var package in packages)
 			{
-				bool hasDotNetStandardSupport = await IsCompatible(package.Id, package.Version);
+				var allMetaData = (await GetAllPackageMetadata(package.Id)).ToList();
+				var packageMetaData = allMetaData.First(p => p.Identity.Version.Equals(package.Version));
+
+				bool hasDotNetStandardSupport = await IsCompatible(packageMetaData);
 				Console.WriteLine($"package: {package.Id}, version: {package.Version}, compatibility: {hasDotNetStandardSupport}");
 
-				var earliestCompatible = await FindEarliestSupportingVersion(package.Id);
+				var earliestCompatible = await FindEarliestSupportingVersion(allMetaData);
 
 				Console.WriteLine(earliestCompatible is null
-					? $" Compatible version not found for package: {package.Id}"
-					: $"Earliest compatible version, package: {earliestCompatible.Id}, version: {earliestCompatible.Version}");
+					? "Compatible version not found"
+					: $"Earliest compatible version: {earliestCompatible.Version}");
 			}
 		}
 
-		private async Task<CompatibilityInfo?> FindEarliestSupportingVersion(string packageId)
+		private async Task<CompatibilityInfo?> FindEarliestSupportingVersion(IEnumerable<IPackageSearchMetadata> packageMetadata)
 		{
-			IEnumerable<IPackageSearchMetadata> packageMetadata = await GetAllPackageMetadata(packageId);
 			return await GetCompatibilityReport(packageMetadata).SkipWhile(c => !c.IsCompatible).FirstOrDefaultAsync();
 		}
 
@@ -39,19 +40,17 @@ namespace NugetCompatibilityTester
 		{
 			foreach (var metadata in packageMetadata)
 			{
-				bool isCompatible = await IsCompatible(metadata.Identity.Id, metadata.Identity.Version);
 				yield return new CompatibilityInfo
 				{
 					Id = metadata.Identity.Id,
 					Version = metadata.Identity.Version,
-					IsCompatible = isCompatible
+					IsCompatible = await IsCompatible(metadata)
 				};
 			}
 		}
 
-		private async Task<bool> IsCompatible(string packageId, NuGetVersion version)
+		private async Task<bool> IsCompatible(IPackageSearchMetadata packageMetadata)
 		{
-			var packageMetadata = await GetPackageMetadata(packageId, version);
 			var dependencyGroups = packageMetadata.DependencySets.ToList();
 
 			if (dependencyGroups.Count is 0)
@@ -72,18 +71,10 @@ namespace NugetCompatibilityTester
 			                                   .ToList();
 
 			foreach (var package in dependencies)
-				yield return await IsCompatible(package.Id, package.VersionRange.MinVersion);
-		}
-
-		private async Task<IPackageSearchMetadata> GetPackageMetadata(string packageId, NuGetVersion version)
-		{
-			var allPackages = await GetAllPackageMetadata(packageId);
-
-			var package = allPackages.FirstOrDefault(p => p.Identity.Version.Equals(version));
-
-			return package ??
-			       throw new ArgumentException(
-				       $"No information available for package: {packageId}, version: {version}");
+			{
+				var metaData = (await GetAllPackageMetadata(package.Id)).First(p => p.Identity.Version.Equals(package.VersionRange.MinVersion));
+				yield return await IsCompatible(metaData);
+			}
 		}
 
 		private async Task<IEnumerable<IPackageSearchMetadata>> GetAllPackageMetadata(string packageId)
