@@ -72,11 +72,13 @@ namespace NugetCompatibilityTester
 			if (dependencyGroups.Any(d => d.TargetFramework.Framework.Equals(".NETStandard")))
 				return true;
 
-			var isAnyDependencyCompatible = await AnalyzeDependencies(dependencyGroups).FirstOrDefaultAsync(d => d);
+			var isAnyDependencyCompatible = await AnalyzeDependencies(dependencyGroups).AllAsync(d => d);
 
 			return isAnyDependencyCompatible;
 		}
 
+		//Needed in cases where main package is mainly based on it's dependencies. Eg: Humanizer
+		//Can be unreliable, as .NET Framework ONLY package could internally use new .NET Standard compliant dependencies. Example: Autofac.WebApi2
 		private async IAsyncEnumerable<bool> AnalyzeDependencies(IEnumerable<PackageDependencyGroup> dependencyGroups)
 		{
 			var dependencies = dependencyGroups.Where(d => d.TargetFramework == NuGetFramework.AnyFramework)
