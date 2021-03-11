@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,12 +16,15 @@ namespace NugetCompatibilityTester
 	{
 		public async Task CheckCompatibility(params PackageInfo[] packages)
 		{
+			var timer = new Stopwatch();
+			timer.Start();
+
 			foreach (var package in packages)
 			{
 				var allMetaData = (await GetAllPackageMetadata(package.Id)).ToList();
 				var packageMetaData = allMetaData.FindClosestVersion(package.Version);
 
-				if(packageMetaData is null)
+				if (packageMetaData is null)
 				{
 					Console.WriteLine($"Package {package.Id} with version {package.Version} not found on public nuget repository.");
 					continue;
@@ -35,6 +39,9 @@ namespace NugetCompatibilityTester
 					? "Compatible version not found"
 					: $"Earliest compatible version: {earliestCompatible.Version}");
 			}
+
+			timer.Stop();
+			Console.WriteLine($"Total time: {timer.Elapsed:m\\:ss\\.fff}");
 		}
 
 		private async Task<CompatibilityInfo?> FindEarliestSupportingVersion(IEnumerable<IPackageSearchMetadata> packageMetadata)
