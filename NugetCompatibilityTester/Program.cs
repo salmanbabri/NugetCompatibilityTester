@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -18,19 +19,26 @@ namespace NugetCompatibilityTester
 			using var serviceScope = host.Services.CreateScope();
 			var services = serviceScope.ServiceProvider;
 
-			var sdkService = services.GetRequiredService<NugetSdkCompatibility>();
-
 			var xml = XDocument.Load("demo.config");
-
 			var packages = xml.Descendants("package")
 			                  .Select(c => new PackageInfo
 			                  {
 				                  Id = c.Attribute("id")!.Value,
 				                  Version = NuGetVersion.Parse(c.Attribute("version")!.Value)
 			                  })
-			                  .ToArray();
+			                  .ToList();
 
-			await sdkService.CheckCompatibility(packages);
+			var input = new CompatibilityInput { Packages = packages };
+
+			var sdkService = services.GetRequiredService<NugetSdkCompatibility>();
+			sdkService.Config.Framework = ".NETStandard";
+
+			var report = await sdkService.GetCompatibilityReport(input);
+
+			Console.WriteLine($"Total time taken: {report.TimeToExecute:m\\:ss\\.fff}");
+
+			report.CompatibilityDetails
+			      .ForEach(p => Console.WriteLine($"package: {p.Id}, version: {p.Version}, status: {p.Status}, earliest: {p.EarliestCompatible}"));
 		}
 
 		private static IHostBuilder GetHostBuilder()
@@ -50,6 +58,7 @@ namespace NugetCompatibilityTester
 				       });
 				       services.AddTransient<NugetApiSearch>();
 				       services.AddTransient<NugetSdkCompatibility>();
+				       services.AddTransient<CompatibilityService>();
 			       })
 			       .UseConsoleLifetime();
 		}

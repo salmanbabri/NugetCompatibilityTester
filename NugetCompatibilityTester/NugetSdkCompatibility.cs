@@ -1,85 +1,78 @@
-using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
-using NuGet.Common;
 using NuGet.Frameworks;
 using NuGet.Packaging;
-using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
+using NuGet.Versioning;
 
 namespace NugetCompatibilityTester
 {
 	public class NugetSdkCompatibility
 	{
-		public async Task CheckCompatibility(params PackageInfo[] packages)
+		private readonly CompatibilityService _compatibilityService;
+		public CompatibilityConfig Config { get; } = new();
+
+		public NugetSdkCompatibility(CompatibilityService compatibilityService)
+		{
+			_compatibilityService = compatibilityService;
+		}
+
+		public async Task<CompatibilityReport> GetCompatibilityReport(CompatibilityInput input)
 		{
 			var timer = new Stopwatch();
 			timer.Start();
+			var compatibilityDetails = await GetCompatibilityInfo(input).ToListAsync();
+			timer.Stop();
 
-			foreach (var package in packages)
+			return new CompatibilityReport
 			{
-				var allMetaData = (await GetAllPackageMetadata(package.Id)).ToList();
+				Config = Config,
+				CompatibilityDetails = compatibilityDetails,
+				TimeToExecute = timer.Elapsed
+			};
+		}
+
+		private async IAsyncEnumerable<CompatibilityInfo> GetCompatibilityInfo(CompatibilityInput input)
+		{
+			foreach (var package in input.Packages)
+			{
+				var allMetaData = await _compatibilityService.GetAllPackageMetadata(package.Id);
 				var packageMetaData = allMetaData.FindClosestVersion(package.Version);
 
-				if (packageMetaData is null)
+				yield return packageMetaData is null
+					? PackageNotFound()
+					: await PackageFound();
+
+				CompatibilityInfo PackageNotFound() => new(package) { Status = CompatibilityStatus.NotFound };
+
+				async Task<CompatibilityInfo> PackageFound() => new(package)
 				{
-					Console.WriteLine($"Package {package.Id} with version {package.Version} not found on public nuget repository.");
-					continue;
-				}
-
-				bool hasDotNetStandardSupport = await IsCompatible(packageMetaData);
-				Console.WriteLine($"package: {package.Id}, version: {package.Version}, compatibility: {hasDotNetStandardSupport}");
-
-				var earliestCompatible = await FindEarliestSupportingVersion(allMetaData);
-
-				Console.WriteLine(earliestCompatible is null
-					? "Compatible version not found"
-					: $"Earliest compatible version: {earliestCompatible.Version}");
-			}
-
-			timer.Stop();
-			Console.WriteLine($"Total time: {timer.Elapsed:m\\:ss\\.fff}");
-		}
-
-		private async Task<CompatibilityInfo?> FindEarliestSupportingVersion(IEnumerable<IPackageSearchMetadata> packageMetadata)
-		{
-			return await GetCompatibilityReport(packageMetadata).SkipWhile(c => !c.IsCompatible).FirstOrDefaultAsync();
-		}
-
-		private async IAsyncEnumerable<CompatibilityInfo> GetCompatibilityReport(IEnumerable<IPackageSearchMetadata> packageMetadata)
-		{
-			foreach (var metadata in packageMetadata)
-			{
-				yield return new CompatibilityInfo
-				{
-					Id = metadata.Identity.Id,
-					Version = metadata.Identity.Version,
-					IsCompatible = await IsCompatible(metadata)
+					EarliestCompatible = await FindEarliestCompatibleVersion(allMetaData),
+					Status = await GetCompatibilityStatus(packageMetaData)
 				};
 			}
 		}
 
-		private async Task<bool> IsCompatible(IPackageSearchMetadata packageMetadata)
+		private async Task<CompatibilityStatus> GetCompatibilityStatus(IPackageSearchMetadata packageMetadata)
 		{
 			var dependencyGroups = packageMetadata.DependencySets.ToList();
 
 			if (dependencyGroups.Count is 0)
-				return false;
+				return CompatibilityStatus.NotCompatible;
 
-			if (dependencyGroups.Any(d => d.TargetFramework.Framework.Equals(".NETStandard")))
-				return true;
+			if (dependencyGroups.Any(d => d.TargetFramework.Framework.Equals(Config.Framework)))
+				return CompatibilityStatus.Compatible;
 
-			var isAnyDependencyCompatible = await AnalyzeDependencies(dependencyGroups).AllAsync(d => d);
+			var areDependenciesCompatible = await AnalyzeDependencies(dependencyGroups).AllAsync(d => d == CompatibilityStatus.Compatible);
 
-			return isAnyDependencyCompatible;
+			return areDependenciesCompatible ? CompatibilityStatus.Undecided : CompatibilityStatus.NotCompatible;
 		}
 
 		//Needed in cases where main package is mainly based on it's dependencies. Eg: Humanizer
 		//Can be unreliable, as .NET Framework ONLY package could internally use new .NET Standard compliant dependencies. Example: Autofac.WebApi2
-		private async IAsyncEnumerable<bool> AnalyzeDependencies(IEnumerable<PackageDependencyGroup> dependencyGroups)
+		private async IAsyncEnumerable<CompatibilityStatus> AnalyzeDependencies(IEnumerable<PackageDependencyGroup> dependencyGroups)
 		{
 			var dependencies = dependencyGroups.Where(d => d.TargetFramework == NuGetFramework.AnyFramework)
 			                                   .SelectMany(d => d.Packages)
@@ -87,29 +80,27 @@ namespace NugetCompatibilityTester
 
 			foreach (var package in dependencies)
 			{
-				var allMetaData = (await GetAllPackageMetadata(package.Id)).ToList();
+				var allMetaData = await _compatibilityService.GetAllPackageMetadata(package.Id);
 				var metaData = allMetaData.FindClosestVersion(package.VersionRange.MinVersion);
 
-				yield return metaData is not null && await IsCompatible(metaData);
+				yield return metaData is null
+					? CompatibilityStatus.NotCompatible
+					: await GetCompatibilityStatus(metaData);
 			}
 		}
 
-		private async Task<IEnumerable<IPackageSearchMetadata>> GetAllPackageMetadata(string packageId)
+		private async Task<NuGetVersion?> FindEarliestCompatibleVersion(IEnumerable<IPackageSearchMetadata> packageMetadata)
 		{
-			ILogger logger = NullLogger.Instance;
-			var cancellationToken = CancellationToken.None;
-			var cache = new SourceCacheContext();
+			return await GetPackageCompatibility()
+			             .SkipWhile(c => c.Status is not CompatibilityStatus.Compatible)
+			             .Select(c => c.Version)
+			             .FirstOrDefaultAsync();
 
-			var repository = Repository.Factory.GetCoreV3("https://api.nuget.org/v3/index.json");
-			PackageMetadataResource resource = await repository.GetResourceAsync<PackageMetadataResource>(cancellationToken);
-
-			return await resource.GetMetadataAsync(
-				packageId,
-				includePrerelease: false,
-				includeUnlisted: false,
-				cache,
-				logger,
-				cancellationToken);
+			async IAsyncEnumerable<CompatibilityInfo> GetPackageCompatibility()
+			{
+				foreach (var metadata in packageMetadata)
+					yield return new CompatibilityInfo(metadata) { Status = await GetCompatibilityStatus(metadata) };
+			}
 		}
 	}
 }
