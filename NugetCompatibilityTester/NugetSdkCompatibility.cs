@@ -19,22 +19,7 @@ namespace NugetCompatibilityTester
 			_compatibilityService = compatibilityService;
 		}
 
-		public async Task<CompatibilityReport> GetCompatibilityReport(CompatibilityInput input)
-		{
-			var timer = new Stopwatch();
-			timer.Start();
-			var compatibilityDetails = await GetCompatibilityDetails(input).ToListAsync();
-			timer.Stop();
-
-			return new CompatibilityReport
-			{
-				Config = Config,
-				CompatibilityDetails = compatibilityDetails,
-				TimeToExecute = timer.Elapsed
-			};
-		}
-
-		private async IAsyncEnumerable<CompatibilityInfo> GetCompatibilityDetails(CompatibilityInput input)
+		public async IAsyncEnumerable<CompatibilityInfo> GetCompatibilityReport(CompatibilityInput input)
 		{
 			foreach (var package in input.Packages)
 			{

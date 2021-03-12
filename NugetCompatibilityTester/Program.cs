@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Timers;
 using System.Xml.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -34,12 +36,15 @@ namespace NugetCompatibilityTester
 			sdkService.Config.Framework = ".NETStandard";
 			sdkService.Config.Version = new Version(2, 0);
 
-			var report = await sdkService.GetCompatibilityReport(input);
+			var timer = new Stopwatch();
+			timer.Start();
+			var report = sdkService.GetCompatibilityReport(input);
 
-			Console.WriteLine($"Total time taken: {report.TimeToExecute:m\\:ss\\.fff}");
+			await foreach (var p in report)
+				Console.WriteLine($"package: {p.Id}, version: {p.Version}, status: {p.Status}, earliest: {p.EarliestCompatible}");
 
-			report.CompatibilityDetails
-			      .ForEach(p => Console.WriteLine($"package: {p.Id}, version: {p.Version}, status: {p.Status}, earliest: {p.EarliestCompatible}"));
+			timer.Stop();
+			Console.WriteLine($"Total time taken: {timer.Elapsed:m\\:ss\\.fff}");
 		}
 
 		private static IHostBuilder GetHostBuilder()
