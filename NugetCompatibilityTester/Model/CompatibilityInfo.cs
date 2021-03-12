@@ -17,8 +17,8 @@ namespace NugetCompatibilityTester
 			Version = metadata.Identity.Version;
 		}
 
-		public string Id { get; init; }
-		public NuGetVersion Version { get; init; }
+		public string Id { get; }
+		public NuGetVersion Version { get; }
 		public NuGetVersion? EarliestCompatible { get; set; }
 		public CompatibilityStatus Status { get; set; }
 	}
@@ -26,8 +26,8 @@ namespace NugetCompatibilityTester
 	public enum CompatibilityStatus
 	{
 		NotCompatible,
-		Undecided,
-		Compatible,
+		DependenciesCompatible,
+		FullyCompatible,
 		NotFound
 	}
 }

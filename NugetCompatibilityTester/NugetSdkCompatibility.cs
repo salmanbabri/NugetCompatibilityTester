@@ -23,7 +23,7 @@ namespace NugetCompatibilityTester
 		{
 			var timer = new Stopwatch();
 			timer.Start();
-			var compatibilityDetails = await GetCompatibilityInfo(input).ToListAsync();
+			var compatibilityDetails = await GetCompatibilityDetails(input).ToListAsync();
 			timer.Stop();
 
 			return new CompatibilityReport
@@ -34,7 +34,7 @@ namespace NugetCompatibilityTester
 			};
 		}
 
-		private async IAsyncEnumerable<CompatibilityInfo> GetCompatibilityInfo(CompatibilityInput input)
+		private async IAsyncEnumerable<CompatibilityInfo> GetCompatibilityDetails(CompatibilityInput input)
 		{
 			foreach (var package in input.Packages)
 			{
@@ -63,11 +63,11 @@ namespace NugetCompatibilityTester
 				return CompatibilityStatus.NotCompatible;
 
 			if (dependencyGroups.Any(HasConfigFramework))
-				return CompatibilityStatus.Compatible;
+				return CompatibilityStatus.FullyCompatible;
 
-			var areDependenciesCompatible = await AnalyzeDependencies(dependencyGroups).AllAsync(d => d == CompatibilityStatus.Compatible);
+			var areDependenciesCompatible = await AnalyzeDependencies(dependencyGroups).AllAsync(d => d == CompatibilityStatus.FullyCompatible);
 
-			return areDependenciesCompatible ? CompatibilityStatus.Undecided : CompatibilityStatus.NotCompatible;
+			return areDependenciesCompatible ? CompatibilityStatus.DependenciesCompatible : CompatibilityStatus.NotCompatible;
 		}
 
 		private bool HasConfigFramework(IFrameworkSpecific group)
@@ -101,7 +101,7 @@ namespace NugetCompatibilityTester
 		private async Task<NuGetVersion?> FindEarliestCompatibleVersion(IEnumerable<IPackageSearchMetadata> packageMetadata)
 		{
 			return await GetPackageCompatibility()
-			             .SkipWhile(c => c.Status is not CompatibilityStatus.Compatible)
+			             .SkipWhile(c => c.Status is not CompatibilityStatus.FullyCompatible)
 			             .Select(c => c.Version)
 			             .FirstOrDefaultAsync();
 
