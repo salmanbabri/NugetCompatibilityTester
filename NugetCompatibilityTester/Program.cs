@@ -32,6 +32,7 @@ namespace NugetCompatibilityTester
 
 			var sdkService = services.GetRequiredService<NugetSdkCompatibility>();
 			sdkService.Config.Framework = ".NETStandard";
+			sdkService.Config.Version = new Version(2, 0);
 
 			var report = await sdkService.GetCompatibilityReport(input);
 

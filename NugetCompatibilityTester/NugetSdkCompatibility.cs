@@ -62,12 +62,21 @@ namespace NugetCompatibilityTester
 			if (dependencyGroups.Count is 0)
 				return CompatibilityStatus.NotCompatible;
 
-			if (dependencyGroups.Any(d => d.TargetFramework.Framework.Equals(Config.Framework)))
+			if (dependencyGroups.Any(HasConfigFramework))
 				return CompatibilityStatus.Compatible;
 
 			var areDependenciesCompatible = await AnalyzeDependencies(dependencyGroups).AllAsync(d => d == CompatibilityStatus.Compatible);
 
 			return areDependenciesCompatible ? CompatibilityStatus.Undecided : CompatibilityStatus.NotCompatible;
+		}
+
+		private bool HasConfigFramework(IFrameworkSpecific group)
+		{
+			var version = group.TargetFramework.Version;
+			bool hasCompatibleVersion = Config.Version is null ||
+			                            version.Major == Config.Version.Major && version.Minor == Config.Version.Minor;
+
+			return group.TargetFramework.Framework.Equals(Config.Framework) && hasCompatibleVersion;
 		}
 
 		//Needed in cases where main package is mainly based on it's dependencies. Eg: Humanizer
