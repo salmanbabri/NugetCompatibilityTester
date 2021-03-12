@@ -35,13 +35,20 @@ namespace NugetCompatibilityTester
 			var allMetaData = await _compatibilityService.GetAllPackageMetadata(package.Id);
 			var packageMetaData = allMetaData.FindClosestVersion(package.Version);
 
-			return packageMetaData is null
-				? new CompatibilityInfo(package) { Status = CompatibilityStatus.NotFound }
-				: new CompatibilityInfo(package)
-				{
-					EarliestCompatible = await FindEarliestCompatibleVersion(allMetaData),
-					Status = await GetCompatibilityStatus(packageMetaData)
-				};
+			if (packageMetaData is null)
+				return new CompatibilityInfo(package) { Status = CompatibilityStatus.NotFound };
+
+			var status = await GetCompatibilityStatus(packageMetaData);
+
+			var filteredMetadata = status is not CompatibilityStatus.FullyCompatible
+				? allMetaData.Where(p => p.Identity.Version > package.Version)
+				: allMetaData;
+
+			return new CompatibilityInfo(package)
+			{
+				Status = status,
+				EarliestCompatible = await FindEarliestCompatibleVersion(filteredMetadata)
+			};
 		}
 
 		private async Task<CompatibilityStatus> GetCompatibilityStatus(IPackageSearchMetadata packageMetadata)
