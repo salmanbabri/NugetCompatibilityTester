@@ -29,14 +29,19 @@ namespace NugetCompatibilityTester
 			                  })
 			                  .ToList();
 
-			var input = new CompatibilityInput { Packages = packages };
-
 			var sdkService = services.GetRequiredService<NugetSdkCompatibility>();
 			sdkService.Config.Framework = ".NETStandard";
 			sdkService.Config.Version = new Version(2, 0);
 
 			var timer = new Stopwatch();
 			timer.Start();
+
+			var progress = new Progress<string>();
+			int count = 0;
+			progress.ProgressChanged += (_, package)
+				=> Console.WriteLine($"Package processed: {package}, Total completed: {++count}/{packages.Count}, Time: {timer.Elapsed:m\\:ss\\.fff}");
+
+			var input = new CompatibilityInput { Packages = packages, Updates = progress };
 
 			var report = await sdkService.GetCompatibilityReportAsync(input);
 

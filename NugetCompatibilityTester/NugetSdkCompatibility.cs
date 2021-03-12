@@ -20,7 +20,13 @@ namespace NugetCompatibilityTester
 
 		public Task<CompatibilityInfo[]> GetCompatibilityReportAsync(CompatibilityInput input)
 		{
-			var result = input.Packages.Select(GetCompatibilityInfo);
+			var result = input.Packages.Select(async p =>
+			{
+				var compatibilityInfo = await GetCompatibilityInfo(p);
+				input.Updates?.Report(p.Id);
+				return compatibilityInfo;
+			});
+
 			return Task.WhenAll(result);
 		}
 
