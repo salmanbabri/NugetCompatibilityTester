@@ -37,9 +37,10 @@ namespace NugetCompatibilityTester
 
 			var timer = new Stopwatch();
 			timer.Start();
-			var report = sdkService.GetCompatibilityReport(input);
 
-			await foreach (var p in report)
+			var report = await sdkService.GetCompatibilityReportAsync(input);
+
+			foreach (var p in report)
 				Console.WriteLine($"package: {p.Id}, version: {p.Version}, status: {p.Status}, earliest: {p.EarliestCompatible}");
 
 			timer.Stop();

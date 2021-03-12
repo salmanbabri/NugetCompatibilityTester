@@ -18,9 +18,10 @@ namespace NugetCompatibilityTester
 			_compatibilityService = compatibilityService;
 		}
 
-		public IAsyncEnumerable<CompatibilityInfo> GetCompatibilityReport(CompatibilityInput input)
+		public Task<CompatibilityInfo[]> GetCompatibilityReportAsync(CompatibilityInput input)
 		{
-			return input.Packages.ToAsyncEnumerable().SelectAwait(async p => await GetCompatibilityInfo(p));
+			var result = input.Packages.Select(GetCompatibilityInfo);
+			return Task.WhenAll(result);
 		}
 
 		private async Task<CompatibilityInfo> GetCompatibilityInfo(PackageInfo package)
