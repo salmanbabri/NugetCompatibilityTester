@@ -20,6 +20,7 @@ namespace NugetCompatibilityTester
 		public string Id { get; }
 		public NuGetVersion Version { get; }
 		public NuGetVersion? EarliestCompatible { get; set; }
+		public NuGetVersion? LatestCompatible { get; set; }
 		public CompatibilityStatus Status { get; set; }
 	}
 

@@ -46,7 +46,7 @@ namespace NugetCompatibilityTester
 			var report = await sdkService.GetCompatibilityReportAsync(input);
 
 			foreach (var p in report)
-				Console.WriteLine($"package: {p.Id}, version: {p.Version}, status: {p.Status}, earliest: {p.EarliestCompatible}");
+				Console.WriteLine($"package: {p.Id}, version: {p.Version}, status: {p.Status}, earliest: {p.EarliestCompatible}, latest: {p.LatestCompatible}");
 
 			timer.Stop();
 			Console.WriteLine($"Total time taken: {timer.Elapsed:m\\:ss\\.fff}");

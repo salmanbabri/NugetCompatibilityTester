@@ -33,22 +33,27 @@ namespace NugetCompatibilityTester
 		private async Task<CompatibilityInfo> GetCompatibilityInfo(PackageInfo package)
 		{
 			var allMetaData = await _compatibilityService.GetAllPackageMetadata(package.Id);
-			var packageMetaData = allMetaData.FindClosestVersion(package.Version);
+			var packageMetadata = allMetaData.FindClosestVersion(package.Version);
 
-			if (packageMetaData is null)
+			if (packageMetadata is null)
 				return new CompatibilityInfo(package) { Status = CompatibilityStatus.NotFound };
 
-			var status = await GetCompatibilityStatus(packageMetaData);
-
-			var filteredMetadata = status is not CompatibilityStatus.FullyCompatible
-				? allMetaData.Where(p => p.Identity.Version > package.Version)
-				: allMetaData;
-
-			return new CompatibilityInfo(package)
+			var info = new CompatibilityInfo(package)
 			{
-				Status = status,
-				EarliestCompatible = await FindEarliestCompatibleVersion(filteredMetadata)
+				Status = await GetCompatibilityStatus(packageMetadata)
 			};
+
+			if (SupportsAnyModernPlatform(allMetaData.Last()))
+			{
+				var filteredMetadata = info.Status is not CompatibilityStatus.FullyCompatible
+					? allMetaData.Where(p => p.Identity.Version > package.Version).ToList()
+					: allMetaData;
+
+				info.EarliestCompatible = await FindEarliestCompatibleVersion(filteredMetadata);
+				info.LatestCompatible = await FindLatestCompatibleVersion(allMetaData);
+			}
+
+			return info;
 		}
 
 		private async Task<CompatibilityStatus> GetCompatibilityStatus(IPackageSearchMetadata packageMetadata)
@@ -92,13 +97,25 @@ namespace NugetCompatibilityTester
 				: await GetCompatibilityStatus(metaData);
 		}
 
-		private async Task<NuGetVersion?> FindEarliestCompatibleVersion(IEnumerable<IPackageSearchMetadata> packageMetadata)
+		private bool SupportsAnyModernPlatform(IPackageSearchMetadata packageMetadata)
 		{
-			return await packageMetadata.ToAsyncEnumerable()
-			                            .SelectAwait(async p => new CompatibilityInfo(p) { Status = await GetCompatibilityStatus(p) })
-			                            .SkipWhile(c => c.Status is not CompatibilityStatus.FullyCompatible)
-			                            .Select(c => c.Version)
-			                            .FirstOrDefaultAsync();
+			var modernFrameworks = new List<string> { ".NETStandard", ".NETCoreApp" };
+			return packageMetadata.DependencySets.Any(g => modernFrameworks.Contains(g.TargetFramework.Framework));
+		}
+
+		private async Task<NuGetVersion?> FindEarliestCompatibleVersion(IEnumerable<IPackageSearchMetadata> packageMetadata)
+			=> await FindCompatibleVersion(packageMetadata.ToAsyncEnumerable());
+
+		private async Task<NuGetVersion?> FindLatestCompatibleVersion(IEnumerable<IPackageSearchMetadata> allMetaData)
+			=> await FindCompatibleVersion(allMetaData.Reverse().ToAsyncEnumerable());
+
+		private async Task<NuGetVersion?> FindCompatibleVersion(IAsyncEnumerable<IPackageSearchMetadata> allMetadata)
+		{
+			var result = await allMetadata
+			                   .SelectAwait(async p => new CompatibilityInfo(p) { Status = await GetCompatibilityStatus(p) })
+			                   .FirstOrDefaultAsync(c => c.Status is CompatibilityStatus.FullyCompatible);
+
+			return result?.Version;
 		}
 	}
 }
