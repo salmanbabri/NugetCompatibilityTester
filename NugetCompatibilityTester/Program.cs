@@ -69,7 +69,7 @@ namespace NugetCompatibilityTester
 				       });
 				       services.AddTransient<NugetApiSearch>();
 				       services.AddTransient<NugetSdkCompatibility>();
-				       services.AddTransient<CompatibilityService>();
+				       services.AddSingleton<CompatibilityService>();
 			       })
 			       .UseConsoleLifetime();
 		}
