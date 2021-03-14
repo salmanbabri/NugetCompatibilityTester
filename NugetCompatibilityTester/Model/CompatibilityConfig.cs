@@ -2,10 +2,8 @@ using System;
 
 namespace NugetCompatibilityTester
 {
-	public class CompatibilityConfig
+	public record CompatibilityConfig(string Framework)
 	{
-		public string Framework { get; set; }
-
 		public Version? Version { get; set; }
-	}
+	};
 }

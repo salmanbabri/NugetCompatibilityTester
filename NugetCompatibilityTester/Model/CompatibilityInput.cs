@@ -3,10 +3,8 @@ using System.Collections.Generic;
 
 namespace NugetCompatibilityTester
 {
-	public class CompatibilityInput
+	public record CompatibilityInput(List<PackageInfo> Packages)
 	{
-		public List<PackageInfo> Packages { get; init; } = new();
-
-		public IProgress<string>? Updates { get; set; }
+		public IProgress<string>? Updates { get; init; }
 	}
 }

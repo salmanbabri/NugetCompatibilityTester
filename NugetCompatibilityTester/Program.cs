@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Linq;
-using System.Net;
-using System.Net.Http;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,16 +20,12 @@ namespace NugetCompatibilityTester
 
 			var xml = XDocument.Load("demo.config");
 			var packages = xml.Descendants("package")
-			                  .Select(c => new PackageInfo
-			                  {
-				                  Id = c.Attribute("id")!.Value,
-				                  Version = NuGetVersion.Parse(c.Attribute("version")!.Value)
-			                  })
+			                  .Select(c => new PackageInfo(c.Attribute("id")!.Value,
+				                  NuGetVersion.Parse(c.Attribute("version")!.Value))
+			                  )
 			                  .ToList();
 
 			var sdkService = services.GetRequiredService<NugetSdkCompatibility>();
-			sdkService.Config.Framework = ".NETStandard";
-			sdkService.Config.Version = new Version(2, 0);
 
 			var timer = new Stopwatch();
 			timer.Start();
@@ -41,7 +35,7 @@ namespace NugetCompatibilityTester
 			progress.ProgressChanged += (_, package)
 				=> Console.WriteLine($"Package processed: {package}, Total completed: {++count}/{packages.Count}, Time: {timer.Elapsed:m\\:ss\\.fff}");
 
-			var input = new CompatibilityInput { Packages = packages, Updates = progress };
+			var input = new CompatibilityInput(packages) { Updates = progress };
 
 			var report = await sdkService.GetCompatibilityReportAsync(input);
 
@@ -57,28 +51,16 @@ namespace NugetCompatibilityTester
 			return new HostBuilder()
 			       .ConfigureServices((_, services) =>
 			       {
-				       services.AddHttpClient();
-				       services.AddHttpClient("decompress_gzip").ConfigurePrimaryHttpMessageHandler(_ =>
-				       {
-					       var handler = new HttpClientHandler();
-
-					       if (handler.SupportsAutomaticDecompression)
-						       handler.AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip;
-
-					       return handler;
-				       });
-				       services.AddTransient<NugetApiSearch>();
 				       services.AddTransient<NugetSdkCompatibility>();
 				       services.AddSingleton<CompatibilityService>();
+
+				       services.AddTransient<CompatibilityAnalyzer>();
+				       services.AddTransient(_ => new CompatibilityConfig(".NETStandard")
+				       {
+					       Version = new Version(2, 0)
+				       });
 			       })
 			       .UseConsoleLifetime();
 		}
 	}
 }
-
-/*
-	 services.AddHttpClient<XApiClient>().ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-	{
-		AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
-	}).AddPolicyHandler(request => timeout);
-*/

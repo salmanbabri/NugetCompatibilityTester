@@ -3,13 +3,9 @@ using NuGet.Versioning;
 
 namespace NugetCompatibilityTester
 {
-	public class CompatibilityInfo
+	public record CompatibilityInfo
 	{
-		public CompatibilityInfo(PackageInfo package)
-		{
-			Id = package.Id;
-			Version = package.Version;
-		}
+		public CompatibilityInfo(PackageInfo package) => (Id, Version) = package;
 
 		public CompatibilityInfo(IPackageSearchMetadata metadata)
 		{
@@ -19,9 +15,9 @@ namespace NugetCompatibilityTester
 
 		public string Id { get; }
 		public NuGetVersion Version { get; }
-		public NuGetVersion? EarliestCompatible { get; set; }
-		public NuGetVersion? LatestCompatible { get; set; }
-		public CompatibilityStatus Status { get; set; }
+		public NuGetVersion? EarliestCompatible { get; init; }
+		public NuGetVersion? LatestCompatible { get; init; }
+		public CompatibilityStatus Status { get; init; }
 	}
 
 	public enum CompatibilityStatus
