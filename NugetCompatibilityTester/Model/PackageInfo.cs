@@ -1,6 +1,6 @@
 using NuGet.Versioning;
 
-namespace NugetCompatibilityTester
+namespace NugetCompatibilityTester.Model
 {
 	public record PackageInfo(string Id, NuGetVersion Version);
 }

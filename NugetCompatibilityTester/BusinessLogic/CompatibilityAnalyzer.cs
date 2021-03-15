@@ -4,8 +4,11 @@ using System.Threading.Tasks;
 using NuGet.Frameworks;
 using NuGet.Packaging.Core;
 using NuGet.Protocol.Core.Types;
+using NugetCompatibilityTester.Extensions;
+using NugetCompatibilityTester.Model;
+using NugetCompatibilityTester.Services;
 
-namespace NugetCompatibilityTester
+namespace NugetCompatibilityTester.BusinessLogic
 {
 	public class CompatibilityAnalyzer
 	{

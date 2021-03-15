@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace NugetCompatibilityTester
+namespace NugetCompatibilityTester.Model
 {
 	public record CompatibilityInput(List<PackageInfo> Packages)
 	{

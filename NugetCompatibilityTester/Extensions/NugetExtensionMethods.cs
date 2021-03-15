@@ -1,10 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
-using NuGet.Packaging;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
 
-namespace NugetCompatibilityTester
+namespace NugetCompatibilityTester.Extensions
 {
 	public static class NugetExtensionMethods
 	{

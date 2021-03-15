@@ -3,8 +3,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
+using NugetCompatibilityTester.Extensions;
+using NugetCompatibilityTester.Model;
+using NugetCompatibilityTester.Services;
 
-namespace NugetCompatibilityTester
+namespace NugetCompatibilityTester.BusinessLogic
 {
 	public class NugetSdkCompatibility
 	{

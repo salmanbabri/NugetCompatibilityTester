@@ -2,7 +2,7 @@ using CsvHelper.Configuration;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
 
-namespace NugetCompatibilityTester
+namespace NugetCompatibilityTester.Model
 {
 	public record CompatibilityInfo
 	{

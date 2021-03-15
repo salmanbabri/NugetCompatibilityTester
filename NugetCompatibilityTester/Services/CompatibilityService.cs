@@ -6,7 +6,7 @@ using NuGet.Common;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 
-namespace NugetCompatibilityTester
+namespace NugetCompatibilityTester.Services
 {
 	public class CompatibilityService
 	{

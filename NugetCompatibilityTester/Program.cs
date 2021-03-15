@@ -10,6 +10,9 @@ using CsvHelper;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NuGet.Versioning;
+using NugetCompatibilityTester.BusinessLogic;
+using NugetCompatibilityTester.Model;
+using NugetCompatibilityTester.Services;
 
 namespace NugetCompatibilityTester
 {

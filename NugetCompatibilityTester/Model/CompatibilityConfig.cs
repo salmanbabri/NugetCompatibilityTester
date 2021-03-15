@@ -1,6 +1,6 @@
 using System;
 
-namespace NugetCompatibilityTester
+namespace NugetCompatibilityTester.Model
 {
 	public record CompatibilityConfig(string Framework)
 	{
