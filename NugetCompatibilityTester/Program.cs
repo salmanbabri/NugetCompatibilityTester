@@ -1,8 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using CsvHelper;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NuGet.Versioning;
@@ -39,11 +43,21 @@ namespace NugetCompatibilityTester
 
 			var report = await sdkService.GetCompatibilityReportAsync(input);
 
-			foreach (var p in report)
-				Console.WriteLine($"package: {p.Id}, version: {p.Version}, status: {p.Status}, earliest: {p.EarliestCompatible}, latest: {p.LatestCompatible}");
-
 			timer.Stop();
 			Console.WriteLine($"Total time taken: {timer.Elapsed:m\\:ss\\.fff}");
+
+			Console.WriteLine($"Writing to csv");
+			await WriteToCsvAsync(report);
+			Console.WriteLine($"Successfully written to csv");
+		}
+
+		private static async Task WriteToCsvAsync(IEnumerable<CompatibilityInfo> report)
+		{
+			await using var writer = new StreamWriter("report.csv");
+			await using var csv = new CsvWriter(writer, CultureInfo.InvariantCulture);
+			csv.Context.RegisterClassMap<CompatibilityReportMap>();
+
+			await csv.WriteRecordsAsync(report);
 		}
 
 		private static IHostBuilder GetHostBuilder()
